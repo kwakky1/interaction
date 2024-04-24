@@ -1,46 +1,178 @@
+'use client';
 
+import {RefObject, useEffect, useRef, useState} from "react";
+
+type SceneInfo = {
+  type: 'sticky' | 'normal';
+  heightNum: number;
+  scrollHeight: number;
+  objs: {
+    [key: string]: RefObject<HTMLDivElement>;
+  };
+  values?: {
+    [key: string]: number[];
+  };
+};
 
 export default function Home() {
+
+  const [currentScene, setCurrentScene] = useState(0);
+  const [prevScrollHeight, setPrevScrollHeight] = useState(0);
+
+  const section0Ref = useRef<HTMLDivElement>(null);
+  const section1Ref = useRef<HTMLDivElement>(null);
+  const section2Ref = useRef<HTMLDivElement>(null);
+  const section3Ref = useRef<HTMLDivElement>(null);
+  const firstMessageRef = useRef<HTMLDivElement>(null);
+
+  const sceneInfo: SceneInfo[] = [
+    {
+      type: 'sticky',
+      heightNum: 5,
+      scrollHeight: 0,
+      objs: {
+        container: section0Ref,
+        firstMessage: firstMessageRef,
+      },
+      values: {
+        firstMessage_opacity: [0, 1],
+      }
+    },
+    {
+      type: 'normal',
+      heightNum: 5,
+      scrollHeight: 0,
+      objs: {
+        container: section1Ref,
+      }
+    },
+    {
+      type: 'sticky',
+      heightNum: 5,
+      scrollHeight: 0,
+      objs: {
+        container: section2Ref,
+      }
+    },
+    {
+      type: 'sticky',
+      heightNum: 5,
+      scrollHeight: 0,
+      objs: {
+        container: section3Ref,
+      }
+    }
+  ];
+
+  const setLayout = () => {
+    sceneInfo.forEach((scene) => {
+      if (scene.objs.container.current) {
+        scene.scrollHeight = scene.heightNum * window.innerHeight;
+        scene.objs.container.current.style.height = `${scene.scrollHeight}px`;
+      }
+    });
+  }
+
+  const scrollLoop = () => {
+    for (let i = 0; i < currentScene; i++) {
+      setPrevScrollHeight((prev) => prev + sceneInfo[i].scrollHeight);
+    }
+
+    if(window.scrollY > prevScrollHeight + sceneInfo[currentScene].scrollHeight) {
+      setCurrentScene((prev) => prev + 1);
+    }
+  };
+  console.log(window.scrollY, prevScrollHeight + sceneInfo[currentScene].scrollHeight)
+  if(window.scrollY > prevScrollHeight + sceneInfo[currentScene].scrollHeight) {
+    setCurrentScene((prev) => prev + 1);
+  }
+
+  if(window.scrollY < prevScrollHeight) {
+    setCurrentScene((prev) => prev - 1);
+  }
+
+  console.log(currentScene, prevScrollHeight);
+
+  const calcValues = (values: number[], currentYOffset: number) => {
+
+  }
+
+  const playAnimation = () => {
+    const values = sceneInfo[currentScene].values;
+    const objs = sceneInfo[currentScene].objs;
+    const currentYOffset = window.scrollY - prevScrollHeight;
+
+
+    console.log(currentScene, currentYOffset);
+
+    switch (currentScene) {
+      case 0:
+        let firstMessage_opacity_0 = values?.firstMessage_opacity[0];
+        let firstMessage_opacity_1 = values?.firstMessage_opacity[1];
+        /*console.log(calcValues(values?.firstMessage_opacity!, currentYOffset))*/
+        break;
+      case 1:
+        console.log('1 play')
+        break;
+      case 2:
+        break;
+      case 3:
+        break;
+    }
+  }
+
+  useEffect(() => {
+    setLayout();
+    window.addEventListener('resize', setLayout);
+    window.addEventListener('scroll', scrollLoop);
+    return () => {
+      window.removeEventListener('resize', setLayout);
+      window.removeEventListener('scroll', scrollLoop);
+    };
+  }, []);
+
+
   return (
     <div>
-      <section id="scroll-section-0" className="scroll-section">
+      <section id="scroll-section-0" className="scroll-section" ref={section0Ref} >
         <h1>AirMug Pro</h1>
-        <div className={"sticky-elem main-message"}>
+        <div className={`sticky-elem main-message ${currentScene === 0 ? 'visible' : ''}`} ref={firstMessageRef}>
           <p>온전히 빠져들게 하는<br/>세라믹</p>
         </div>
-        <div className={"sticky-elem main-message"}>
+        <div className={`sticky-elem main-message ${currentScene === 0 ? 'visible' : ''}`}>
           <p>주변 맛을 느끼게 해주는<br/>주변 맛 허용 모드</p>
         </div>
-        <div className={"sticky-elem main-message"}>
+        <div className={`sticky-elem main-message ${currentScene === 0 ? 'visible' : ''}`}>
           <p>온종일 편안한<br/>맞춤형 손잡이</p>
         </div>
-        <div className={"sticky-elem main-message"}>
+        <div className={`sticky-elem main-message ${currentScene === 0 ? 'visible' : ''}`}>
           <p>새롭게 입가를<br/>찾아온 매혹</p>
         </div>
       </section>
-      <section id="scroll-section-1" className="scroll-section">
+      <section id="scroll-section-1" className="scroll-section" ref={section1Ref}>
         <p className={'description'}>
           <strong>보통 스크롤 영역</strong>
           Lorem ipsum dolor sit amet, consectetur adipisicing elit. Consectetur ipsa iusto natus. Alias atque commodi corporis, dignissimos dolorem doloremque eos fugit id incidunt ipsa iste natus perferendis quaerat quia quisquam sed sint, soluta voluptas. Consectetur ea porro quaerat quisquam vero. Adipisci aliquam aliquid, blanditiis culpa cumque deleniti dolor eaque enim est ex expedita id illo, ipsa laboriosam modi nostrum odit officiis perspiciatis placeat quam tempora tempore totam, ullam veritatis vero! A cumque deserunt facere fugiat hic ipsa itaque, omnis optio pariatur perspiciatis reprehenderit sunt tempora voluptatem. Accusantium amet asperiores at beatae consequatur doloribus ducimus earum eligendi eos exercitationem fugit incidunt iste laboriosam magni maxime nam nobis optio porro praesentium quae quam recusandae rerum sed sequi temporibus ullam, voluptatum. Accusantium ad adipisci animi consequatur cum eius error et exercitationem fugiat itaque magnam, minima molestias, nesciunt odio optio provident unde ut voluptatibus. Ab deleniti error explicabo ipsam nostrum reiciendis unde voluptates? Adipisci at deleniti, distinctio dolor dolorem doloremque dolores expedita harum, inventore, ipsa iste iure laborum non possimus qui recusandae tenetur vel voluptatum? Adipisci aliquid at, blanditiis consectetur dignissimos doloribus eius eligendi ex facilis maxime, praesentium quas recusandae reiciendis saepe sequi sint unde? At atque culpa cum debitis, explicabo fugit harum provident!
         </p>
       </section>
-      <section id="scroll-section-2" className="scroll-section">
+      <section id="scroll-section-2" className="scroll-section" ref={section2Ref}>
 
-        <div className="sticky-elem main-message">
+        <div className={`sticky-elem main-message ${currentScene === 2 ? 'visible' : ''}`}>
           <p>
             <small>편안한 촉감</small>
             입과 하나 되다
           </p>
         </div>
 
-        <div className="sticky-elem desc-message">
+        <div className={`sticky - elem desc-message ${currentScene === 2 ? 'visible' : ''}`}>
           <p>
-            편안한 목넘김을 완성하는 디테일한 여러 구성 요소들, 우리는 이를 하나하나 새롭게 살피고 재구성하는 과정을 거쳐 새로운 수준의 머그, AirMug Pro를 만들었습니다. 입에 뭔가 댔다는 감각은 어느새 사라지고 오롯이 당신과 음료만 남게 되죠.
+            편안한 목넘김을 완성하는 디테일한 여러 구성 요소들, 우리는 이를 하나하나 새롭게 살피고 재구성하는 과정을 거쳐 새로운 수준의 머그, AirMug Pro를 만들었습니다. 입에 뭔가 댔다는 감각은
+            어느새 사라지고 오롯이 당신과 음료만 남게 되죠.
           </p>
           <div className="pin"/>
         </div>
 
-        <div className="sticky-elem desc-message">
+        <div className={`sticky - elem desc-message ${currentScene === 2 ? 'visible' : ''}`}>
           <p>
             디자인 앤 퀄리티 오브 스웨덴,<br/>메이드 인 차이나
           </p>
@@ -48,8 +180,8 @@ export default function Home() {
         </div>
 
       </section>
-      <section id="scroll-section-3" className="scroll-section">
-        <p className="mid-message">
+      <section id="scroll-section-3" className="scroll-section" ref={section3Ref}>
+      <p className="mid-message">
           <strong>Retina 머그</strong>
           아이디어를 광활하게 펼칠 <br/>
           아름답고 부드러운 음료 공간.
