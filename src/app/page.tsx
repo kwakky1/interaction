@@ -2,6 +2,8 @@
 
 import {RefObject, useEffect, useRef, useState} from "react";
 
+type AnimationValues = [ number, number, {start: number, end: number}? ];
+
 type SceneInfo = {
   type: 'sticky' | 'normal';
   heightNum: number;
@@ -10,20 +12,27 @@ type SceneInfo = {
     [key: string]: RefObject<HTMLDivElement>;
   };
   values?: {
-    [key: string]: number[];
+    [key: string]: AnimationValues;
   };
 };
 
 export default function Home() {
 
-  const [currentScene, setCurrentScene] = useState(0);
-  const [prevScrollHeight, setPrevScrollHeight] = useState(0);
-
   const section0Ref = useRef<HTMLDivElement>(null);
   const section1Ref = useRef<HTMLDivElement>(null);
   const section2Ref = useRef<HTMLDivElement>(null);
   const section3Ref = useRef<HTMLDivElement>(null);
+
   const firstMessageRef = useRef<HTMLDivElement>(null);
+  const secondMessageRef = useRef<HTMLDivElement>(null);
+  const thirdMessageRef = useRef<HTMLDivElement>(null);
+  const fourthMessageRef = useRef<HTMLDivElement>(null);
+
+  const aMessageRef = useRef<HTMLDivElement>(null);
+  const bMessageRef = useRef<HTMLDivElement>(null);
+  const cMessageRef = useRef<HTMLDivElement>(null);
+  const pinbRef = useRef<HTMLDivElement>(null);
+  const pincRef = useRef<HTMLDivElement>(null);
 
   const sceneInfo: SceneInfo[] = [
     {
@@ -33,9 +42,27 @@ export default function Home() {
       objs: {
         container: section0Ref,
         firstMessage: firstMessageRef,
+        secondMessage: secondMessageRef,
+        thirdMessage: thirdMessageRef,
+        fourthMessage: fourthMessageRef,
       },
       values: {
-        firstMessage_opacity: [0, 1],
+        firstMessage_opacity_in: [0, 1, { start: 0.1, end: 0.2 }],
+        secondMessage_opacity_in: [0, 1, { start: 0.3, end: 0.4 }],
+        thirdMessage_opacity_in: [0, 1, { start: 0.5, end: 0.6 }],
+        fourthMessage_opacity_in: [0, 1, { start: 0.7, end: 0.8 }],
+        firstMessage_translateY_in: [20, 0, { start: 0.1, end: 0.2 }],
+        secondMessage_translateY_in: [20, 0, { start: 0.3, end: 0.4 }],
+        thirdMessage_translateY_in: [20, 0, { start: 0.5, end: 0.6 }],
+        fourthMessage_translateY_in: [20, 0, { start: 0.7, end: 0.8 }],
+        firstMessage_opacity_out: [1, 0, { start: 0.25, end: 0.3 }],
+        secondMessage_opacity_out: [1, 0, { start: 0.45, end: 0.5 }],
+        thirdMessage_opacity_out: [1, 0, { start: 0.65, end: 0.7 }],
+        fourthMessage_opacity_out: [1, 0, { start: 0.85, end: 0.9 }],
+        firstMessage_translateY_out: [0, -20, { start: 0.25, end: 0.3 }],
+        secondMessage_translateY_out: [0, -20, { start: 0.45, end: 0.5 }],
+        thirdMessage_translateY_out: [0, -20, { start: 0.65, end: 0.7 }],
+        fourthMessage_translateY_out: [0, -20, { start: 0.85, end: 0.9 }]
       }
     },
     {
@@ -52,10 +79,35 @@ export default function Home() {
       scrollHeight: 0,
       objs: {
         container: section2Ref,
+        a: aMessageRef,
+        b: bMessageRef,
+        c: cMessageRef,
+        pinB: pinbRef,
+        pinC: pincRef,
+      },
+      values: {
+        a_translateY_in: [20, 0, { start: 0.15, end: 0.2 }],
+        b_translateY_in: [30, 0, { start: 0.5, end: 0.55 }],
+        c_translateY_in: [30, 0, { start: 0.72, end: 0.77 }],
+        a_opacity_in: [0, 1, { start: 0.15, end: 0.2 }],
+        b_opacity_in: [0, 1, { start: 0.5, end: 0.55 }],
+        c_opacity_in: [0, 1, { start: 0.72, end: 0.77 }],
+        a_translateY_out: [0, -20, { start: 0.3, end: 0.35 }],
+        b_translateY_out: [0, -20, { start: 0.58, end: 0.63 }],
+        c_translateY_out: [0, -20, { start: 0.85, end: 0.9 }],
+        a_opacity_out: [1, 0, { start: 0.3, end: 0.35 }],
+        b_opacity_out: [1, 0, { start: 0.58, end: 0.63 }],
+        c_opacity_out: [1, 0, { start: 0.85, end: 0.9 }],
+        pinB_scaleY: [0.5, 1, { start: 0.5, end: 0.55 }],
+        pinC_scaleY: [0.5, 1, { start: 0.72, end: 0.77 }],
+        pinB_opacity_in: [0, 1, { start: 0.5, end: 0.55 }],
+        pinC_opacity_in: [0, 1, { start: 0.72, end: 0.77 }],
+        pinB_opacity_out: [1, 0, { start: 0.58, end: 0.63 }],
+        pinC_opacity_out: [1, 0, { start: 0.85, end: 0.9 }]
       }
     },
     {
-      type: 'sticky',
+      type: 'normal',
       heightNum: 5,
       scrollHeight: 0,
       objs: {
@@ -64,69 +116,172 @@ export default function Home() {
     }
   ];
 
+  let currentScene = 0;
+  let prevScrollHeight = 0;
+  let scrollY = 0;
+  let enterNewScene = false;
+  const [scene, setScene] = useState<number>(0)
+
   const setLayout = () => {
     sceneInfo.forEach((scene) => {
       if (scene.objs.container.current) {
-        scene.scrollHeight = scene.heightNum * window.innerHeight;
+        /*const paddingTop = parseFloat(getComputedStyle(scene.objs.container.current).paddingTop);*/
+        if(scene.type === 'sticky'){
+          scene.scrollHeight = scene.heightNum * window.innerHeight /*+ paddingTop;*/
+          console.log(scene.heightNum * window.innerHeight);
+        } else {
+          scene.scrollHeight = scene.objs.container.current.offsetHeight /*+ paddingTop;*/
+        }
         scene.objs.container.current.style.height = `${scene.scrollHeight}px`;
+
       }
     });
+
+    let totalScrollHeight = 0;
+    for (let i = 0; i < sceneInfo.length; i++) {
+      totalScrollHeight += sceneInfo[i].scrollHeight;
+      if (totalScrollHeight >= window.scrollY) {
+        currentScene = i;
+        break;
+      }
+    }
+    setScene(currentScene)
   }
 
   const scrollLoop = () => {
+    enterNewScene = false;
+    scrollY = window.scrollY;
+    prevScrollHeight = 0;
     for (let i = 0; i < currentScene; i++) {
-      setPrevScrollHeight((prev) => prev + sceneInfo[i].scrollHeight);
+      prevScrollHeight += sceneInfo[i].scrollHeight;
     }
 
-    if(window.scrollY > prevScrollHeight + sceneInfo[currentScene].scrollHeight) {
-      setCurrentScene((prev) => prev + 1);
+    if (scrollY > prevScrollHeight + sceneInfo[currentScene].scrollHeight) {
+      enterNewScene = true;
+      currentScene++;
+      setScene(currentScene)
     }
+    if (scrollY < prevScrollHeight) {
+      enterNewScene = true;
+      if(currentScene === 0) return;
+      currentScene--;
+      setScene(currentScene)
+    }
+    if(enterNewScene) return;
+    playAnimation();
   };
-  console.log(window.scrollY, prevScrollHeight + sceneInfo[currentScene].scrollHeight)
-  if(window.scrollY > prevScrollHeight + sceneInfo[currentScene].scrollHeight) {
-    setCurrentScene((prev) => prev + 1);
+
+  const calcValues = (values: AnimationValues, currentYOffset: number) => {
+    let rv
+    const scrollHeight = sceneInfo[currentScene].scrollHeight;
+    const  scrollRatio = currentYOffset / scrollHeight
+
+    if(values[2]){
+      const partScrollStart = values[2].start * scrollHeight;
+      const partScrollEnd = values[2].end * scrollHeight;
+      const partScrollHeight = partScrollEnd - partScrollStart;
+
+      if(currentYOffset >= partScrollStart && currentYOffset <= partScrollEnd){
+        rv = (currentYOffset - partScrollStart) / partScrollHeight * (values[1] - values[0]) + values[0];
+      } else if(currentYOffset  < partScrollStart){
+        rv= values[0];
+      } else if(currentYOffset > partScrollEnd){
+        rv = values[1];
+      }
+    } else {
+      rv = scrollRatio * (values[1] - values[0]) + values[0];
+    }
+
+    return rv;
   }
 
-  if(window.scrollY < prevScrollHeight) {
-    setCurrentScene((prev) => prev - 1);
-  }
-
-  console.log(currentScene, prevScrollHeight);
-
-  const calcValues = (values: number[], currentYOffset: number) => {
-
-  }
 
   const playAnimation = () => {
-    const values = sceneInfo[currentScene].values;
     const objs = sceneInfo[currentScene].objs;
-    const currentYOffset = window.scrollY - prevScrollHeight;
-
-
-    console.log(currentScene, currentYOffset);
+    const values = sceneInfo[currentScene].values;
+    const currentYOffset = scrollY - prevScrollHeight;
+    const scrollHeight = sceneInfo[currentScene].scrollHeight;
+    const scrollRatio = currentYOffset / scrollHeight;
 
     switch (currentScene) {
       case 0:
-        let firstMessage_opacity_0 = values?.firstMessage_opacity[0];
-        let firstMessage_opacity_1 = values?.firstMessage_opacity[1];
-        /*console.log(calcValues(values?.firstMessage_opacity!, currentYOffset))*/
-        break;
-      case 1:
-        console.log('1 play')
-        break;
+        if(scrollRatio <= 0.22){
+          objs.firstMessage.current!.style.opacity = Number(calcValues(values?.firstMessage_opacity_in!, currentYOffset)).toString();
+          objs.firstMessage.current!.style.transform = `translate3d(0, ${calcValues(values?.firstMessage_translateY_in!, currentYOffset)}%, 0)`;
+        } else {
+          objs.firstMessage.current!.style.opacity = Number(calcValues(values?.firstMessage_opacity_out!, currentYOffset)).toString();
+          objs.firstMessage.current!.style.transform = `translate3d(0, ${calcValues(values?.firstMessage_translateY_out!, currentYOffset)}%, 0)`;
+        }
+
+        if(scrollRatio <= 0.42){
+          objs.secondMessage.current!.style.opacity = Number(calcValues(values?.secondMessage_opacity_in!, currentYOffset)).toString();
+          objs.secondMessage.current!.style.transform = `translate3d(0, ${calcValues(values?.secondMessage_translateY_in!, currentYOffset)}%, 0)`;
+        } else {
+          objs.secondMessage.current!.style.opacity = Number(calcValues(values?.secondMessage_opacity_out!, currentYOffset)).toString();
+          objs.secondMessage.current!.style.transform = `translate3d(0, ${calcValues(values?.secondMessage_translateY_out!, currentYOffset)}%, 0)`;
+        }
+
+        if(scrollRatio <= 0.62){
+          objs.thirdMessage.current!.style.opacity = Number(calcValues(values?.thirdMessage_opacity_in!, currentYOffset)).toString();
+          objs.thirdMessage.current!.style.transform = `translate3d(0, ${calcValues(values?.thirdMessage_translateY_in!, currentYOffset)}%, 0)`;
+        } else {
+          objs.thirdMessage.current!.style.opacity = Number(calcValues(values?.thirdMessage_opacity_out!, currentYOffset)).toString();
+          objs.thirdMessage.current!.style.transform = `translate3d(0, ${calcValues(values?.thirdMessage_translateY_out!, currentYOffset)}%, 0)`;
+        }
+
+        if (scrollRatio <= 0.82) {
+          objs.fourthMessage.current!.style.opacity = Number(calcValues(values?.fourthMessage_opacity_in!, currentYOffset)).toString();
+          objs.fourthMessage.current!.style.transform = `translate3d(0, ${calcValues(values?.fourthMessage_translateY_in!, currentYOffset)}%, 0)`;
+        } else {
+          objs.fourthMessage.current!.style.opacity = Number(calcValues(values?.fourthMessage_opacity_out!, currentYOffset)).toString();
+          objs.fourthMessage.current!.style.transform = `translate3d(0, ${calcValues(values?.fourthMessage_translateY_out!, currentYOffset)}%, 0)`;
+        }
+        break
       case 2:
-        break;
+        if (scrollRatio <= 0.25) {
+          objs.a.current!.style.opacity = Number(calcValues(values?.a_opacity_in!, currentYOffset)).toString();
+          objs.a.current!.style.transform = `translate3d(0, ${calcValues(values?.a_translateY_in!, currentYOffset)}%, 0)`;
+        } else {
+          objs.a.current!.style.opacity = Number(calcValues(values?.a_opacity_out!, currentYOffset)).toString();
+          objs.a.current!.style.transform = `translate3d(0, ${calcValues(values?.a_translateY_out!, currentYOffset)}%, 0)`;
+        }
+
+        if(scrollRatio <= 0.57) {
+          objs.b.current!.style.opacity = Number(calcValues(values?.b_opacity_in!, currentYOffset)).toString();
+          objs.b.current!.style.transform = `translate3d(0, ${calcValues(values?.b_translateY_in!, currentYOffset)}%, 0)`;
+          objs.pinB.current!.style.transform = `scaleY(${calcValues(values?.pinB_scaleY!, currentYOffset)})`;
+        } else {
+          objs.b.current!.style.opacity = Number(calcValues(values?.b_opacity_out!, currentYOffset)).toString();
+          objs.b.current!.style.transform = `translate3d(0, ${calcValues(values?.b_translateY_out!, currentYOffset)}%, 0)`;
+          objs.pinB.current!.style.transform = `scaleY(${calcValues(values?.pinB_scaleY!, currentYOffset)})`;
+        }
+
+        if(scrollRatio <= 0.83) {
+          objs.c.current!.style.opacity = Number(calcValues(values?.c_opacity_in!, currentYOffset)).toString();
+          objs.c.current!.style.transform = `translate3d(0, ${calcValues(values?.c_translateY_in!, currentYOffset)}%, 0)`;
+          objs.pinC.current!.style.transform = `scaleY(${calcValues(values?.pinC_scaleY!, currentYOffset)})`;
+        } else {
+          objs.c.current!.style.opacity = Number(calcValues(values?.c_opacity_out!, currentYOffset)).toString();
+          objs.c.current!.style.transform = `translate3d(0, ${calcValues(values?.c_translateY_out!, currentYOffset)}%, 0)`;
+          objs.pinC.current!.style.transform = `scaleY(${calcValues(values?.pinC_scaleY!, currentYOffset)})`;
+        }
+        break
       case 3:
-        break;
+        break
+
     }
   }
 
+
+
+
   useEffect(() => {
     setLayout();
-    window.addEventListener('resize', setLayout);
-    window.addEventListener('scroll', scrollLoop);
+    window.addEventListener('scroll', ()=>{
+      scrollLoop();
+    });
+
     return () => {
-      window.removeEventListener('resize', setLayout);
       window.removeEventListener('scroll', scrollLoop);
     };
   }, []);
@@ -134,18 +289,18 @@ export default function Home() {
 
   return (
     <div>
-      <section id="scroll-section-0" className="scroll-section" ref={section0Ref} >
+      <section id="scroll-section-0" className="scroll-section" ref={section0Ref}>
         <h1>AirMug Pro</h1>
-        <div className={`sticky-elem main-message ${currentScene === 0 ? 'visible' : ''}`} ref={firstMessageRef}>
-          <p>온전히 빠져들게 하는<br/>세라믹</p>
+        <div className={`sticky-elem main-message ${scene === 0 ? 'visible' : ''}`} ref={firstMessageRef}>
+          <p>온전히 빠져들게 하는<br/>최고급 세라믹</p>
         </div>
-        <div className={`sticky-elem main-message ${currentScene === 0 ? 'visible' : ''}`}>
+        <div className={`sticky-elem main-message ${scene === 0 ? 'visible' : ''}`} ref={secondMessageRef}>
           <p>주변 맛을 느끼게 해주는<br/>주변 맛 허용 모드</p>
         </div>
-        <div className={`sticky-elem main-message ${currentScene === 0 ? 'visible' : ''}`}>
+        <div className={`sticky-elem main-message ${scene === 0 ? 'visible' : ''}`} ref={thirdMessageRef}>
           <p>온종일 편안한<br/>맞춤형 손잡이</p>
         </div>
-        <div className={`sticky-elem main-message ${currentScene === 0 ? 'visible' : ''}`}>
+        <div className={`sticky-elem main-message ${scene === 0 ? 'visible' : ''}`} ref={fourthMessageRef}>
           <p>새롭게 입가를<br/>찾아온 매혹</p>
         </div>
       </section>
@@ -157,26 +312,26 @@ export default function Home() {
       </section>
       <section id="scroll-section-2" className="scroll-section" ref={section2Ref}>
 
-        <div className={`sticky-elem main-message ${currentScene === 2 ? 'visible' : ''}`}>
+        <div className={`sticky-elem main-message a ${scene === 2 ? 'visible' : ''}`} ref={aMessageRef}>
           <p>
             <small>편안한 촉감</small>
             입과 하나 되다
           </p>
         </div>
 
-        <div className={`sticky - elem desc-message ${currentScene === 2 ? 'visible' : ''}`}>
+        <div className={`sticky-elem desc-message b ${scene === 2 ? 'visible' : ''}`} ref={bMessageRef}>
           <p>
             편안한 목넘김을 완성하는 디테일한 여러 구성 요소들, 우리는 이를 하나하나 새롭게 살피고 재구성하는 과정을 거쳐 새로운 수준의 머그, AirMug Pro를 만들었습니다. 입에 뭔가 댔다는 감각은
             어느새 사라지고 오롯이 당신과 음료만 남게 되죠.
           </p>
-          <div className="pin"/>
+          <div className="pin" ref={pinbRef}/>
         </div>
 
-        <div className={`sticky - elem desc-message ${currentScene === 2 ? 'visible' : ''}`}>
+        <div className={`sticky-elem desc-message c ${scene === 2 ? 'visible' : ''}`} ref={cMessageRef}>
           <p>
             디자인 앤 퀄리티 오브 스웨덴,<br/>메이드 인 차이나
           </p>
-          <div className="pin"/>
+          <div className="pin" ref={pincRef}/>
         </div>
 
       </section>
