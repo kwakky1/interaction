@@ -4,12 +4,14 @@ import {RefObject, useEffect, useRef, useState} from "react";
 
 type AnimationValues = [ number, number, {start: number, end: number}? ];
 
+
 type SceneInfo = {
   type: 'sticky' | 'normal';
   heightNum: number;
   scrollHeight: number;
   objs: {
-    [key: string]: RefObject<HTMLDivElement>;
+    [key: string]: RefObject<HTMLDivElement | HTMLCanvasElement>;
+
   };
   values?: {
     [key: string]: AnimationValues;
@@ -33,6 +35,12 @@ export default function Home() {
   const cMessageRef = useRef<HTMLDivElement>(null);
   const pinbRef = useRef<HTMLDivElement>(null);
   const pincRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const [videoImages, setVideoImages] = useState<HTMLImageElement[]>([]);
+  const [imgLoadComplete, setImgLoadComplete] = useState<boolean>(false);
+
+  const videoImageCount = 300
 
   const sceneInfo: SceneInfo[] = [
     {
@@ -45,8 +53,11 @@ export default function Home() {
         secondMessage: secondMessageRef,
         thirdMessage: thirdMessageRef,
         fourthMessage: fourthMessageRef,
+        canvas: canvasRef,
       },
       values: {
+
+        imageSequence: [0, 299],
         firstMessage_opacity_in: [0, 1, { start: 0.1, end: 0.2 }],
         secondMessage_opacity_in: [0, 1, { start: 0.3, end: 0.4 }],
         thirdMessage_opacity_in: [0, 1, { start: 0.5, end: 0.6 }],
@@ -122,13 +133,38 @@ export default function Home() {
   let enterNewScene = false;
   const [scene, setScene] = useState<number>(0)
 
+  const loadImages = async () => {
+    const loadImage = (src: string) => {
+      return new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    };
+
+    const imagePromises = [];
+
+    for (let i = 0; i < videoImageCount; i++) {
+      const imagePath = `/video/001/IMG_${(i + 6726).toString().padStart(4, "0")}.JPG`;
+      imagePromises.push(loadImage(imagePath));
+    }
+
+    try {
+      const loadedImages = await Promise.all(imagePromises);
+      setVideoImages(loadedImages);
+      setImgLoadComplete(true);
+    } catch (error) {
+      console.error("Failed to load images", error);
+    }
+  };
+
   const setLayout = () => {
     sceneInfo.forEach((scene) => {
       if (scene.objs.container.current) {
         /*const paddingTop = parseFloat(getComputedStyle(scene.objs.container.current).paddingTop);*/
         if(scene.type === 'sticky'){
           scene.scrollHeight = scene.heightNum * window.innerHeight /*+ paddingTop;*/
-          console.log(scene.heightNum * window.innerHeight);
         } else {
           scene.scrollHeight = scene.objs.container.current.offsetHeight /*+ paddingTop;*/
         }
@@ -195,6 +231,18 @@ export default function Home() {
     return rv;
   }
 
+  useEffect(() => {
+    if (imgLoadComplete) {
+      if (canvasRef.current) {
+        const context = canvasRef.current.getContext("2d");
+        if (context) {
+          context.drawImage(videoImages[0], 0, 0);
+        }
+      }
+    }
+  }, [imgLoadComplete]);
+
+  console.log(videoImages[1])
 
   const playAnimation = () => {
     const objs = sceneInfo[currentScene].objs;
@@ -205,6 +253,13 @@ export default function Home() {
 
     switch (currentScene) {
       case 0:
+        let sequence = Math.round(Number(calcValues(values?.imageSequence!, currentYOffset)));
+        if (canvasRef.current) {
+          const context = canvasRef.current.getContext("2d");
+          if (context) {
+            context.drawImage(videoImages[sequence], 0, 0);
+          }
+        }
         if(scrollRatio <= 0.22){
           objs.firstMessage.current!.style.opacity = Number(calcValues(values?.firstMessage_opacity_in!, currentYOffset)).toString();
           objs.firstMessage.current!.style.transform = `translate3d(0, ${calcValues(values?.firstMessage_translateY_in!, currentYOffset)}%, 0)`;
@@ -277,6 +332,7 @@ export default function Home() {
 
   useEffect(() => {
     setLayout();
+    loadImages();
     window.addEventListener('scroll', ()=>{
       scrollLoop();
     });
@@ -284,13 +340,16 @@ export default function Home() {
     return () => {
       window.removeEventListener('scroll', scrollLoop);
     };
-  }, []);
+  }, [imgLoadComplete]);
 
 
   return (
     <div>
       <section id="scroll-section-0" className="scroll-section" ref={section0Ref}>
         <h1>AirMug Pro</h1>
+        <div className={`sticky-elem sticky-elem-canvas ${scene === 0 ? 'visible' : ''}`}>
+          <canvas ref={canvasRef} width="1920" height="1080" />
+        </div>
         <div className={`sticky-elem main-message ${scene === 0 ? 'visible' : ''}`} ref={firstMessageRef}>
           <p>온전히 빠져들게 하는<br/>최고급 세라믹</p>
         </div>
