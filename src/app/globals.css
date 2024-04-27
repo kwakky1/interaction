@@ -116,13 +116,13 @@ p {
 }
 
 .scroll-section {
-  border: 3px solid red;
   padding-top: 50vh;
 }
 
 #scroll-section-0 h1 {
   font-size: 4rem;
   text-align: center;
+  top: -10vh;
   z-index: 10;
   position: relative;
 }
@@ -171,6 +171,7 @@ p {
 .desc-message {
   width: 50%;
   font-weight: bold;
+  opacity: 0;
 }
 
 .pin {
@@ -210,6 +211,12 @@ p {
   color: #888888;
 }
 
+.sticky-elem-canvas canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+
 .footer {
   display: flex;
   align-items: center;
@@ -232,6 +239,7 @@ p {
 
 .sticky-elem-canvas {
   top: 0;
+  height: 100%;
 }
 
 @media (min-width: 1024px) {

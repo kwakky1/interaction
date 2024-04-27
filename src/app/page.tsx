@@ -36,11 +36,14 @@ export default function Home() {
   const pinbRef = useRef<HTMLDivElement>(null);
   const pincRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef2 = useRef<HTMLCanvasElement>(null);
 
   const [videoImages, setVideoImages] = useState<HTMLImageElement[]>([]);
+  const [secondVideoImages, setSecondVideoImages] = useState<HTMLImageElement[]>([]);
   const [imgLoadComplete, setImgLoadComplete] = useState<boolean>(false);
 
   const videoImageCount = 300
+  const videoImageCount2 = 960
 
   const sceneInfo: SceneInfo[] = [
     {
@@ -53,11 +56,10 @@ export default function Home() {
         secondMessage: secondMessageRef,
         thirdMessage: thirdMessageRef,
         fourthMessage: fourthMessageRef,
-        canvas: canvasRef,
       },
       values: {
-
         imageSequence: [0, 299],
+        canvas_opacity: [1, 0, { start: 0.9, end: 1 }],
         firstMessage_opacity_in: [0, 1, { start: 0.1, end: 0.2 }],
         secondMessage_opacity_in: [0, 1, { start: 0.3, end: 0.4 }],
         thirdMessage_opacity_in: [0, 1, { start: 0.5, end: 0.6 }],
@@ -97,6 +99,9 @@ export default function Home() {
         pinC: pincRef,
       },
       values: {
+        imageSequence: [0, 959],
+        canvas_opacity_in: [0, 1, { start: 0, end: 0.1 }],
+        canvas_opacity_out: [1, 0, { start: 0.95, end: 1 }],
         a_translateY_in: [20, 0, { start: 0.15, end: 0.2 }],
         b_translateY_in: [30, 0, { start: 0.5, end: 0.55 }],
         c_translateY_in: [30, 0, { start: 0.72, end: 0.77 }],
@@ -138,21 +143,33 @@ export default function Home() {
       return new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve(img);
-        img.onerror = reject;
         img.src = src;
+        img.onerror = reject;
       });
     };
 
     const imagePromises = [];
+    const imagePromises2 = [];
 
     for (let i = 0; i < videoImageCount; i++) {
       const imagePath = `/video/001/IMG_${(i + 6726).toString().padStart(4, "0")}.JPG`;
       imagePromises.push(loadImage(imagePath));
     }
 
+    for (let i = 0; i < videoImageCount2; i++) {
+      const imagePath = `/video/002/IMG_${(i + 7027).toString().padStart(4, "0")}.JPG`;
+      imagePromises2.push(loadImage(imagePath));
+    }
+
     try {
-      const loadedImages = await Promise.all(imagePromises);
+      const allImagePromises = [...imagePromises, ...imagePromises2];
+      const allLoadedImages = await Promise.all(allImagePromises);
+      // 이전에 두 세트로 나눠진 로드된 이미지들을 분리합니다.
+      const loadedImages = allLoadedImages.slice(0, imagePromises.length);
+      const loadedImages2 = allLoadedImages.slice(imagePromises.length);
+
       setVideoImages(loadedImages);
+      setSecondVideoImages(loadedImages2);
       setImgLoadComplete(true);
     } catch (error) {
       console.error("Failed to load images", error);
@@ -162,7 +179,6 @@ export default function Home() {
   const setLayout = () => {
     sceneInfo.forEach((scene) => {
       if (scene.objs.container.current) {
-        /*const paddingTop = parseFloat(getComputedStyle(scene.objs.container.current).paddingTop);*/
         if(scene.type === 'sticky'){
           scene.scrollHeight = scene.heightNum * window.innerHeight /*+ paddingTop;*/
         } else {
@@ -182,6 +198,15 @@ export default function Home() {
       }
     }
     setScene(currentScene)
+    const heightRatio = window.innerHeight / 1080;
+    if(canvasRef.current){
+      canvasRef.current.style.transform = `translate3d(-50%, -50%, 0) scale(${heightRatio})`;
+    }
+    if(canvasRef2.current){
+      canvasRef2.current.style.transform = `translate3d(-50%, -50%, 0) scale(${heightRatio})`;
+    }
+
+
   }
 
   const scrollLoop = () => {
@@ -239,10 +264,14 @@ export default function Home() {
           context.drawImage(videoImages[0], 0, 0);
         }
       }
+      /*if(canvasRef2.current){
+        const context = canvasRef2.current.getContext("2d");
+        if (context) {
+          context.drawImage(secondVideoImages[0], 0, 0);
+        }
+      }*/
     }
   }, [imgLoadComplete]);
-
-  console.log(videoImages[1])
 
   const playAnimation = () => {
     const objs = sceneInfo[currentScene].objs;
@@ -256,9 +285,13 @@ export default function Home() {
         let sequence = Math.round(Number(calcValues(values?.imageSequence!, currentYOffset)));
         if (canvasRef.current) {
           const context = canvasRef.current.getContext("2d");
+          /*console.log(context);*/
           if (context) {
-            context.drawImage(videoImages[sequence], 0, 0);
+            if(videoImages[sequence]){
+              context.drawImage(videoImages[sequence], 0, 0);
+            }
           }
+          canvasRef.current.style.opacity = Number(calcValues(values?.canvas_opacity!, currentYOffset)).toString();
         }
         if(scrollRatio <= 0.22){
           objs.firstMessage.current!.style.opacity = Number(calcValues(values?.firstMessage_opacity_in!, currentYOffset)).toString();
@@ -293,6 +326,24 @@ export default function Home() {
         }
         break
       case 2:
+        let sequence2 = Math.round(Number(calcValues(values?.imageSequence!, currentYOffset)));
+
+        if (canvasRef2.current) {
+          const context = canvasRef2.current.getContext("2d");
+          if (context) {
+            if(secondVideoImages[sequence2]){
+              console.log(secondVideoImages[sequence2]);
+              context.drawImage(secondVideoImages[sequence2], 0, 0);
+            }
+          }
+          if (scrollRatio <= 0.5) {
+            canvasRef2.current.style.opacity = Number(calcValues(values?.canvas_opacity_in!, currentYOffset)).toString();
+          } else {
+            canvasRef2.current.style.opacity = Number(calcValues(values?.canvas_opacity_out!, currentYOffset)).toString();
+          }
+        }
+
+
         if (scrollRatio <= 0.25) {
           objs.a.current!.style.opacity = Number(calcValues(values?.a_opacity_in!, currentYOffset)).toString();
           objs.a.current!.style.transform = `translate3d(0, ${calcValues(values?.a_translateY_in!, currentYOffset)}%, 0)`;
@@ -370,7 +421,9 @@ export default function Home() {
         </p>
       </section>
       <section id="scroll-section-2" className="scroll-section" ref={section2Ref}>
-
+        <div className={`sticky-elem sticky-elem-canvas ${scene === 2 ? 'visible' : ''}`}>
+          <canvas ref={canvasRef2} width="1920" height="1080"/>
+        </div>
         <div className={`sticky-elem main-message a ${scene === 2 ? 'visible' : ''}`} ref={aMessageRef}>
           <p>
             <small>편안한 촉감</small>
@@ -395,7 +448,7 @@ export default function Home() {
 
       </section>
       <section id="scroll-section-3" className="scroll-section" ref={section3Ref}>
-      <p className="mid-message">
+        <p className="mid-message">
           <strong>Retina 머그</strong>
           아이디어를 광활하게 펼칠 <br/>
           아름답고 부드러운 음료 공간.
