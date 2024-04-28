@@ -37,13 +37,20 @@ export default function Home() {
   const pincRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef2 = useRef<HTMLCanvasElement>(null);
+  const canvasRef3 = useRef<HTMLCanvasElement>(null);
+  const captionRef = useRef<HTMLDivElement>(null);
 
   const [videoImages, setVideoImages] = useState<HTMLImageElement[]>([]);
+
   const [secondVideoImages, setSecondVideoImages] = useState<HTMLImageElement[]>([]);
+
+  const [blendImages, setBlendImages] = useState<HTMLImageElement[]>([]);
+
   const [imgLoadComplete, setImgLoadComplete] = useState<boolean>(false);
 
   const videoImageCount = 300
   const videoImageCount2 = 960
+  const blendImagePath = ['/img/blend-image-1.jpg', '/img/blend-image-2.jpg'];
 
   const sceneInfo: SceneInfo[] = [
     {
@@ -123,11 +130,19 @@ export default function Home() {
       }
     },
     {
-      type: 'normal',
+      type: 'sticky',
       heightNum: 5,
       scrollHeight: 0,
       objs: {
         container: section3Ref,
+      },
+      values : {
+        rect1X: [0, 0, { start: 0, end: 0 }],
+        rect2X: [0, 0, { start: 0, end: 0 }],
+        blendHeight: [0, 0, { start: 0, end: 0 }],
+        canvas_scale: [0, 0, { start: 0, end: 0 }],
+        caption_opacity: [0, 1, { start: 0, end: 0 }],
+        caption_translateY: [20, 0, { start: 0, end: 0 }],
       }
     }
   ];
@@ -136,7 +151,16 @@ export default function Home() {
   let prevScrollHeight = 0;
   let scrollY = 0;
   let enterNewScene = false;
+  let rectStartY: number = 0;
   const [scene, setScene] = useState<number>(0)
+
+  const checkMenu = () => {
+    if(scrollY > 44){
+      document.body.classList.add('local-nav-sticky');
+    } else {
+      document.body.classList.remove('local-nav-sticky');
+    }
+  }
 
   const loadImages = async () => {
     const loadImage = (src: string) => {
@@ -150,6 +174,7 @@ export default function Home() {
 
     const imagePromises = [];
     const imagePromises2 = [];
+    const imagePromises3 = [];
 
     for (let i = 0; i < videoImageCount; i++) {
       const imagePath = `/video/001/IMG_${(i + 6726).toString().padStart(4, "0")}.JPG`;
@@ -161,15 +186,22 @@ export default function Home() {
       imagePromises2.push(loadImage(imagePath));
     }
 
+    for (let i = 0; i < blendImagePath.length; i++) {
+      const imagePath = `${blendImagePath[i]}`;
+      imagePromises3.push(loadImage(imagePath));
+    }
+
     try {
-      const allImagePromises = [...imagePromises, ...imagePromises2];
+      const allImagePromises = [...imagePromises, ...imagePromises2, ...imagePromises3];
       const allLoadedImages = await Promise.all(allImagePromises);
       // 이전에 두 세트로 나눠진 로드된 이미지들을 분리합니다.
       const loadedImages = allLoadedImages.slice(0, imagePromises.length);
       const loadedImages2 = allLoadedImages.slice(imagePromises.length);
+      const loadedImages3 = allLoadedImages.slice(imagePromises.length + imagePromises2.length);
 
       setVideoImages(loadedImages);
       setSecondVideoImages(loadedImages2);
+      setBlendImages(loadedImages3)
       setImgLoadComplete(true);
     } catch (error) {
       console.error("Failed to load images", error);
@@ -285,7 +317,7 @@ export default function Home() {
         let sequence = Math.round(Number(calcValues(values?.imageSequence!, currentYOffset)));
         if (canvasRef.current) {
           const context = canvasRef.current.getContext("2d");
-          /*console.log(context);*/
+
           if (context) {
             if(videoImages[sequence]){
               context.drawImage(videoImages[sequence], 0, 0);
@@ -332,7 +364,6 @@ export default function Home() {
           const context = canvasRef2.current.getContext("2d");
           if (context) {
             if(secondVideoImages[sequence2]){
-              console.log(secondVideoImages[sequence2]);
               context.drawImage(secondVideoImages[sequence2], 0, 0);
             }
           }
@@ -371,8 +402,147 @@ export default function Home() {
           objs.c.current!.style.transform = `translate3d(0, ${calcValues(values?.c_translateY_out!, currentYOffset)}%, 0)`;
           objs.pinC.current!.style.transform = `scaleY(${calcValues(values?.pinC_scaleY!, currentYOffset)})`;
         }
+
+        if(scrollRatio > 0.9) {
+          const values = sceneInfo[3].values;
+          if(canvasRef3.current){
+            const widthRatio = window.innerWidth / canvasRef3.current.width;
+            const heightRatio = window.innerHeight / canvasRef3.current.height;
+
+            let canvasScaleRatio
+            if(widthRatio <= heightRatio){
+              canvasScaleRatio = heightRatio;
+            } else {
+              canvasScaleRatio = widthRatio;
+            }
+
+            canvasRef3.current.style.transform = `scale(${canvasScaleRatio})`;
+
+            const recalculatedInnerWidth = window.innerWidth / canvasScaleRatio;
+            const recalculatedInnerHeight = window.innerHeight / canvasScaleRatio;
+
+            if(!rectStartY){
+              rectStartY = canvasRef3.current.offsetTop + (canvasRef3.current.height - canvasRef3.current.height * canvasScaleRatio) / 2;
+              values!.rect1X[2]!.start = (window.innerHeight / 2) / scrollHeight;
+              values!.rect2X[2]!.start = (window.innerHeight / 2) / scrollHeight;
+              values!.rect1X[2]!.end = rectStartY / scrollHeight;
+              values!.rect2X[2]!.end = rectStartY / scrollHeight;
+            }
+
+            const whiteRectWidth = recalculatedInnerWidth * 0.15;
+            if(values){
+              values.rect1X[0] = (canvasRef3.current.width - recalculatedInnerWidth) / 2;
+              values.rect1X[1] = values.rect1X[0] - whiteRectWidth;
+              values.rect2X[0] = values.rect1X[0] + recalculatedInnerWidth - whiteRectWidth;
+              values.rect2X[1] = values.rect2X[0] + whiteRectWidth;
+            }
+
+            const context = canvasRef3.current.getContext("2d");
+            if (context) {
+              context.fillStyle = '#fff';
+              if(blendImages[0]){
+                context.drawImage(blendImages[0], 0, 0);
+              }
+              context.fillRect(
+                values!.rect1X![0], 0, parseInt(whiteRectWidth.toString()), canvasRef3.current.height);
+              context.fillRect(
+                values!.rect2X![0], 0, whiteRectWidth, canvasRef3.current.height);
+            }
+          }
+        }
+
         break
       case 3:
+
+        if(canvasRef3.current){
+          const widthRatio = window.innerWidth / canvasRef3.current.width;
+          const heightRatio = window.innerHeight / canvasRef3.current.height;
+
+          let canvasScaleRatio
+          if(widthRatio <= heightRatio){
+            canvasScaleRatio = heightRatio;
+          } else {
+            canvasScaleRatio = widthRatio;
+          }
+
+          canvasRef3.current.style.transform = `scale(${canvasScaleRatio})`;
+
+          const recalculatedInnerWidth = window.innerWidth / canvasScaleRatio;
+          const recalculatedInnerHeight = window.innerHeight / canvasScaleRatio;
+
+          const whiteRectWidth = recalculatedInnerWidth * 0.15;
+
+          values!.rect1X[0] = (canvasRef3.current.width - recalculatedInnerWidth) / 2;
+          values!.rect1X[1] = values!.rect1X[0] - whiteRectWidth;
+          values!.rect2X[0] = values!.rect1X[0] + recalculatedInnerWidth - whiteRectWidth;
+          values!.rect2X[1] = values!.rect2X[0] + whiteRectWidth;
+
+
+          const context = canvasRef3.current.getContext("2d");
+          if (context) {
+            context.fillStyle = '#fff';
+            if(blendImages[0]){
+              context.drawImage(blendImages[0], 0, 0);
+            }
+            context.fillRect(
+              parseInt(Number(calcValues(values?.rect1X!, currentYOffset)).toString()),
+              0,
+              parseInt(whiteRectWidth.toString()),
+              canvasRef3.current.height
+            );
+
+            context.fillRect(Number(calcValues(values?.rect2X!, currentYOffset)), 0, whiteRectWidth, canvasRef3.current.height);
+          }
+
+          if(scrollRatio < values!.rect1X[2]!.end){
+            canvasRef3.current.classList.remove('sticky');
+          } else {
+            values!.blendHeight[0] = 0;
+            values!.blendHeight[1] = canvasRef3.current.height;
+            values!.blendHeight[2]!.start = values!.rect1X[2]!.end;
+            values!.blendHeight[2]!.end = values!.blendHeight[2]!.start + 0.2;
+
+            const blendHeight = Number(calcValues(values!.blendHeight, currentYOffset));
+
+            if(context){
+              if(blendImages[1]){
+                context.drawImage(blendImages[1],
+                  0, canvasRef3.current.height - blendHeight, canvasRef3.current.width, blendHeight,
+                  0, canvasRef3.current.height - blendHeight, canvasRef3.current.width, blendHeight
+                );
+              }
+            }
+
+            canvasRef3.current.classList.add('sticky');
+            canvasRef3.current.style.top = `${-(canvasRef3.current.height - canvasRef3.current.height * canvasScaleRatio) / 2}px`;
+          }
+
+          if(scrollRatio > values!.blendHeight[2]!.end){
+            values!.canvas_scale[0] = canvasScaleRatio;
+            values!.canvas_scale[1] = document.body.offsetWidth / (canvasRef3.current.width * 1.5);
+            values!.canvas_scale[2]!.start = values!.blendHeight[2]!.end;
+            values!.canvas_scale[2]!.end = values!.canvas_scale[2]!.start + 0.2;
+
+            canvasRef3.current.style.transform = `scale(${calcValues(values!.canvas_scale, currentYOffset)})`;
+            canvasRef3.current.style.marginTop = '0';
+          }
+
+          if(scrollRatio > values!.canvas_scale[2]!.end && values!.canvas_scale[2]!.end > 0){
+            canvasRef3.current.classList.remove('sticky');
+            canvasRef3.current.style.marginTop = `${scrollHeight * 0.4}px`;
+
+            values!.caption_opacity[2]!.start = values!.canvas_scale[2]!.end;
+            values!.caption_opacity[2]!.end = values!.caption_opacity[2]!.start + 0.1;
+
+            values!.caption_translateY[2]!.start = values!.caption_opacity[2]!.start;
+            values!.caption_translateY[2]!.end = values!.caption_opacity[2]!.end + 0.1;
+
+
+            captionRef.current!.style.opacity = Number(calcValues(values!.caption_opacity, currentYOffset)).toString();
+            captionRef.current!.style.transform = `translate3d(0, ${calcValues(values!.caption_translateY, currentYOffset)}%, 0)`;
+          }
+
+        }
         break
 
     }
@@ -384,8 +554,10 @@ export default function Home() {
   useEffect(() => {
     setLayout();
     loadImages();
+
     window.addEventListener('scroll', ()=>{
       scrollLoop();
+      checkMenu();
     });
 
     return () => {
@@ -453,8 +625,9 @@ export default function Home() {
           아이디어를 광활하게 펼칠 <br/>
           아름답고 부드러운 음료 공간.
         </p>
-        <p className="canvas-caption">
-          Lorem ipsum dolor sit amet, consectetur adipisicing elit. Alias eaque earum eligendi magnam molestias. Animi asperiores at atque corporis cupiditate deleniti dicta dolorum explicabo laboriosam magni nostrum odit, quam quidem sint ullam. Aliquam doloremque ipsum maiores nemo perferendis voluptatibus. Alias aperiam autem beatae harum ipsam iste nam quae quia voluptatem? Animi debitis delectus eum facilis, nesciunt nobis, nulla odio praesentium quam repellat sed sit, soluta. Adipisci aspernatur blanditiis cum debitis delectus, dolorem, ex id impedit non numquam pariatur quos repellendus saepe sed suscipit veniam, voluptatibus? Accusamus aperiam aspernatur aut beatae eius eos esse eveniet, iure molestias nam neque obcaecati porro provident qui, quisquam similique veniam veritatis voluptatem! Architecto deleniti id, natus praesentium qui vitae? Accusamus alias aliquid at consectetur, dignissimos ex impedit labore nihil non nulla quisquam, recusandae repudiandae tempora tempore ullam vel voluptates! Assumenda dignissimos enim explicabo mollitia, neque quis voluptatibus. Aspernatur assumenda autem culpa dicta excepturi illum impedit incidunt inventore ipsa iure laboriosam laborum minima molestias nam nesciunt, nobis non nulla numquam obcaecati pariatur perferendis quibusdam rem repellat reprehenderit rerum saepe sed, similique sint sunt voluptas. Aperiam beatae enim fugit illo magni maiores sapiente sed! Atque cupiditate, earum eligendi ex impedit, iusto, maxime nesciunt pariatur quisquam quo veritatis!
+        <canvas className={'image-blend-canvas'} ref={canvasRef3} width={1920} height={1080}/>
+        <p className="canvas-caption" ref={captionRef}>
+          Lorem ipsum dolor, sit amet consectetur adipisicing elit. Eveniet at fuga quae perspiciatis veniam impedit et, ratione est optio porro. Incidunt aperiam nemo voluptas odit quisquam harum in mollitia. Incidunt minima iusto in corporis, dolores velit. Autem, sit dolorum inventore a rerum distinctio vero illo magni possimus temporibus dolores neque adipisci, repudiandae repellat. Ducimus accusamus similique quas earum laborum. Autem tempora repellendus asperiores illum ex! Velit ea corporis odit? Ea, incidunt delectus. Sapiente rerum neque error deleniti quis, et, quibusdam, est autem voluptate rem voluptas. Ratione soluta similique harum nihil vel. Quas inventore perferendis iusto explicabo animi eos ratione obcaecati.
         </p>
       </section>
     </div>
